@@ -5,12 +5,14 @@ import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { ChatMessagesView } from "@/components/ChatMessagesView";
 import { CognitiveBlockData } from "@/types/cognitive";
 import MindMapDisplay from "@/components/MindMapDisplay";
-import { Node, Edge } from 'reactflow';
-import { AnimatePresence } from 'framer-motion'; // New import for AnimatePresence
+import { Node, Edge } from "reactflow";
+import { AnimatePresence } from "framer-motion"; // New import for AnimatePresence
 
 export default function App() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [cognitiveStream, setCognitiveStream] = useState<CognitiveBlockData[]>([]);
+  const [cognitiveStream, setCognitiveStream] = useState<CognitiveBlockData[]>(
+    []
+  );
   const [isAiThinkingStep, setIsAiThinkingStep] = useState<boolean>(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const hasFinalizeEventOccurredRef = useRef(false);
@@ -20,28 +22,6 @@ export default function App() {
   const [mindMapNodes, setMindMapNodes] = useState<Node[]>([]);
   const [mindMapEdges, setMindMapEdges] = useState<Edge[]>([]);
   const [mindMapError, setMindMapError] = useState<string | null>(null); // New state for mind map error
-
-  // Derive chat history and current messages for Mind Map context
-  const chatHistory = thread.messages || [];
-  let currentAiResponse = "";
-  let currentUserQuestion = "";
-
-  if (chatHistory.length > 0) {
-    const lastMessage = chatHistory[chatHistory.length - 1];
-    if (lastMessage.type === 'ai') {
-      currentAiResponse = typeof lastMessage.content === 'string' ? lastMessage.content : JSON.stringify(lastMessage.content);
-      if (chatHistory.length > 1) {
-        const secondLastMessage = chatHistory[chatHistory.length - 2];
-        if (secondLastMessage.type === 'human') {
-          currentUserQuestion = typeof secondLastMessage.content === 'string' ? secondLastMessage.content : JSON.stringify(secondLastMessage.content);
-        }
-      }
-    } else if (lastMessage.type === 'human') {
-      currentUserQuestion = typeof lastMessage.content === 'string' ? lastMessage.content : JSON.stringify(lastMessage.content);
-      // No current AI response yet in this case, or it's from a much earlier turn.
-      // For mind map, we might only care if there *is* an AI response to map.
-    }
-  }
 
   const thread = useStream<{
     messages: Message[];
@@ -54,7 +34,8 @@ export default function App() {
       : "http://localhost:8123",
     assistantId: "agent",
     messagesKey: "messages",
-    onFinish: (/* event: any */) => { // event can be used if needed
+    onFinish: (/* event: any */) => {
+      // event can be used if needed
       // console.log("Stream finished:", event);
       setIsAiThinkingStep(false);
       hasFinalizeEventOccurredRef.current = false; // Reset for next interaction if still used
@@ -62,14 +43,15 @@ export default function App() {
     onUpdateEvent: (event: any) => {
       setIsAiThinkingStep(true);
       let newBlock: CognitiveBlockData | null = null;
-      const blockId = Date.now().toString() + Math.random().toString(36).substring(2,9);
+      const blockId =
+        Date.now().toString() + Math.random().toString(36).substring(2, 9);
 
       if (event.generate_query) {
         newBlock = {
           id: blockId,
-          type: 'search_queries',
+          type: "search_queries",
           content: {
-            title: 'Generating Search Queries',
+            title: "Generating Search Queries",
             text: `Formulating ${event.generate_query.query_list.length} search query/queries.`,
             details: event.generate_query.query_list,
           },
@@ -78,27 +60,36 @@ export default function App() {
       } else if (event.web_research) {
         const sources = event.web_research.sources_gathered || [];
         const numSources = sources.length;
-        const uniqueLabels = [...new Set(sources.map((s: any) => s.label).filter(Boolean))];
+        const uniqueLabels = [
+          ...new Set(sources.map((s: any) => s.label).filter(Boolean)),
+        ];
         const exampleLabels = uniqueLabels.slice(0, 3).join(", ");
         newBlock = {
           id: blockId,
-          type: 'web_research',
+          type: "web_research",
           content: {
-            title: 'Web Research',
-            text: `Gathered ${numSources} sources. Related to: ${exampleLabels || 'N/A'}.`,
-            details: sources.map((s:any) => ({url: s.url, title: s.title})), // Example detail structure
+            title: "Web Research",
+            text: `Gathered ${numSources} sources. Related to: ${
+              exampleLabels || "N/A"
+            }.`,
+            details: sources.map((s: any) => ({ url: s.url, title: s.title })), // Example detail structure
           },
           timestamp: new Date().toISOString(),
         };
       } else if (event.reflection) {
         newBlock = {
           id: blockId,
-          type: 'reflection',
+          type: "reflection",
           content: {
-            title: 'Reflection',
+            title: "Reflection",
             text: event.reflection.is_sufficient
               ? "Information gathered seems sufficient."
-              : `Further information required. Next step: ${event.reflection.follow_up_queries.join(", ")}`,
+              : `Further information required. Next step: ${
+                  event.reflection.follow_up_queries &&
+                  Array.isArray(event.reflection.follow_up_queries)
+                    ? event.reflection.follow_up_queries.join(", ")
+                    : "Additional research needed"
+                }`,
             details: event.reflection,
           },
           timestamp: new Date().toISOString(),
@@ -106,10 +97,10 @@ export default function App() {
       } else if (event.finalize_answer) {
         newBlock = {
           id: blockId,
-          type: 'finalizing_answer',
+          type: "finalizing_answer",
           content: {
-            title: 'Finalizing Answer',
-            text: 'Synthesizing information and composing the final answer.',
+            title: "Finalizing Answer",
+            text: "Synthesizing information and composing the final answer.",
           },
           timestamp: new Date().toISOString(),
         };
@@ -123,11 +114,42 @@ export default function App() {
     },
   });
 
+  // Derive chat history and current messages for Mind Map context
+  const chatHistory = thread?.messages || [];
+  let currentAiResponse = "";
+  let currentUserQuestion = "";
+
+  if (chatHistory.length > 0) {
+    const lastMessage = chatHistory[chatHistory.length - 1];
+    if (lastMessage.type === "ai") {
+      currentAiResponse =
+        typeof lastMessage.content === "string"
+          ? lastMessage.content
+          : JSON.stringify(lastMessage.content);
+      if (chatHistory.length > 1) {
+        const secondLastMessage = chatHistory[chatHistory.length - 2];
+        if (secondLastMessage.type === "human") {
+          currentUserQuestion =
+            typeof secondLastMessage.content === "string"
+              ? secondLastMessage.content
+              : JSON.stringify(secondLastMessage.content);
+        }
+      }
+    } else if (lastMessage.type === "human") {
+      currentUserQuestion =
+        typeof lastMessage.content === "string"
+          ? lastMessage.content
+          : JSON.stringify(lastMessage.content);
+      // No current AI response yet in this case, or it's from a much earlier turn.
+      // For mind map, we might only care if there *is* an AI response to map.
+    }
+  }
+
   useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  }, [thread.messages, cognitiveStream]); // Scroll on cognitive stream updates too
+  }, [thread?.messages, cognitiveStream]); // Scroll on cognitive stream updates too
 
   // useEffect for hasFinalizeEventOccurredRef removed as historicalActivities are removed.
   // If hasFinalizeEventOccurredRef is used for other purposes, its logic might need review.
@@ -162,14 +184,14 @@ export default function App() {
       }
 
       const newMessages: Message[] = [
-        ...(thread.messages || []),
+        ...(thread?.messages || []),
         {
           type: "human",
           content: submittedInputValue,
           id: Date.now().toString(),
         },
       ];
-      thread.submit({
+      thread?.submit({
         messages: newMessages,
         initial_search_query_count: initial_search_query_count,
         max_research_loops: max_research_loops,
@@ -180,7 +202,7 @@ export default function App() {
   );
 
   const handleCancel = useCallback(() => {
-    thread.stop();
+    thread?.stop();
     window.location.reload();
   }, [thread]);
 
@@ -189,19 +211,21 @@ export default function App() {
       <main className="flex-1 flex flex-col overflow-hidden max-w-4xl mx-auto w-full">
         <div
           className={`flex-1 overflow-y-auto ${
-            thread.messages.length === 0 ? "flex" : ""
+            (thread?.messages?.length || 0) === 0 ? "flex" : ""
           }`}
         >
-          {thread.messages.length === 0 ? (
+          {(thread?.messages?.length || 0) === 0 ? (
             <WelcomeScreen
               handleSubmit={handleSubmit}
-              isLoading={thread.isLoading}
+              isLoading={thread?.isLoading || false}
               onCancel={handleCancel}
+              uploadedFiles={uploadedFiles}
+              setUploadedFiles={setUploadedFiles}
             />
           ) : (
             <ChatMessagesView
-              messages={thread.messages}
-              isLoading={thread.isLoading}
+              messages={thread?.messages || []}
+              isLoading={thread?.isLoading || false}
               scrollAreaRef={scrollAreaRef}
               onSubmit={handleSubmit}
               onCancel={handleCancel}
@@ -213,6 +237,8 @@ export default function App() {
               setIsMindMapOpen={setIsMindMapOpen}
               setMindMapNodes={setMindMapNodes}
               setMindMapEdges={setMindMapEdges}
+              mindMapNodes={mindMapNodes}
+              mindMapEdges={mindMapEdges}
               // Context for Mind Map generation
               chatHistory={chatHistory}
               currentAiResponse={currentAiResponse}
@@ -234,7 +260,9 @@ export default function App() {
             nodes={mindMapNodes}
             edges={mindMapEdges}
             mindMapError={mindMapError}
-            isGenerating={mindMapNodes.length === 0 && !mindMapError && isMindMapOpen} // Infer isGenerating for display
+            isGenerating={
+              mindMapNodes.length === 0 && !mindMapError && isMindMapOpen
+            } // Infer isGenerating for display
           />
         )}
       </AnimatePresence>

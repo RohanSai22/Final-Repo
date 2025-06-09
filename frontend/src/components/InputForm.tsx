@@ -1,11 +1,27 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { SquarePen, Brain, Send, StopCircle, Zap, Cpu, Upload, XCircle, FileText, GitFork, Loader2 } from "lucide-react";
+import {
+  SquarePen,
+  Brain,
+  Send,
+  StopCircle,
+  Zap,
+  Cpu,
+  Upload,
+  XCircle,
+  FileText,
+  GitFork,
+  Loader2,
+} from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { Node, Edge } from 'reactflow';
-import { extractContentFromFiles, generateMindMapWithGemini, applyDagreLayout } from "@/lib/mindmapUtils";
+import { Node, Edge } from "reactflow";
+import {
+  extractContentFromFiles,
+  generateMindMapWithGemini,
+  applyDagreLayout,
+} from "@/lib/mindmapUtils";
 import type { Message } from "@langchain/langgraph-sdk";
-import { motion } from 'framer-motion'; // Import motion
+import { motion } from "framer-motion"; // Import motion
 import {
   Select,
   SelectContent,
@@ -80,7 +96,8 @@ export const InputForm: React.FC<InputFormProps> = ({
     }
   };
 
-  const isSubmitDisabled = (!internalInputValue.trim() && uploadedFiles.length === 0) || isLoading;
+  const isSubmitDisabled =
+    (!internalInputValue.trim() && uploadedFiles.length === 0) || isLoading;
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -99,7 +116,8 @@ export const InputForm: React.FC<InputFormProps> = ({
     >
       {/* Main input text area and submit button */}
       <div
-        className={`flex flex-row items-start text-white rounded-3xl ${ // items-start for multiline
+        className={`flex flex-row items-start text-white rounded-3xl ${
+          // items-start for multiline
           hasHistory ? "rounded-br-sm" : ""
         } bg-neutral-700 px-4 py-3`} // py-3 for consistent padding
       >
@@ -112,7 +130,9 @@ export const InputForm: React.FC<InputFormProps> = ({
                         md:text-base min-h-[24px] max-h-[200px] pt-1`} // Adjusted padding for alignment
           rows={1}
         />
-        <div className="ml-2 flex-shrink-0"> {/* Submit/Cancel buttons container */}
+        <div className="ml-2 flex-shrink-0">
+          {" "}
+          {/* Submit/Cancel buttons container */}
           {isLoading ? (
             <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
               <Button
@@ -172,15 +192,16 @@ export const InputForm: React.FC<InputFormProps> = ({
           </motion.div>
           {uploadedFiles.length > 0 && (
             <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-             <Button
-             type="button"
-             variant="ghost"
-             size="sm"
-             className="text-red-500 hover:text-red-400 text-xs"
-             onClick={() => setUploadedFiles([])} // Clear all files
-           >
-             <XCircle className="h-4 w-4 mr-1" /> Clear All
-           </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-red-500 hover:text-red-400 text-xs"
+                onClick={() => setUploadedFiles([])} // Clear all files
+              >
+                <XCircle className="h-4 w-4 mr-1" /> Clear All
+              </Button>
+            </motion.div>
           )}
         </div>
 
@@ -193,7 +214,9 @@ export const InputForm: React.FC<InputFormProps> = ({
               >
                 <div className="flex items-center overflow-hidden">
                   <FileText className="h-4 w-4 mr-2 flex-shrink-0 text-neutral-500" />
-                  <span className="truncate" title={file.name}>{file.name}</span>
+                  <span className="truncate" title={file.name}>
+                    {file.name}
+                  </span>
                 </div>
                 <Button
                   type="button"
@@ -209,27 +232,45 @@ export const InputForm: React.FC<InputFormProps> = ({
             ))}
           </div>
         ) : (
-          <p className="text-xs text-neutral-500 px-1">No files selected. Accepted: .pdf, .txt, .doc, .docx</p>
+          <p className="text-xs text-neutral-500 px-1">
+            No files selected. Accepted: .pdf, .txt, .doc, .docx
+          </p>
         )}
       </div>
 
-
       {/* Effort, Model Selectors, and Mind Map Button */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto"> {/* Changed to flex-wrap for smaller screens */}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {" "}
+          {/* Changed to flex-wrap for smaller screens */}
           {/* Effort Select */}
           <div className="flex flex-row items-center gap-1 bg-neutral-700 border-neutral-600 text-neutral-300 focus:ring-neutral-500 rounded-xl pl-3 pr-1 py-1 text-sm">
             <Brain className="h-4 w-4 flex-shrink-0" />
             <span className="flex-shrink-0">Effort</span>
-              <Brain className="h-4 w-4 mr-2" />
+            <Brain className="h-4 w-4 mr-2" />
             <Select value={effort} onValueChange={setEffort}>
               <SelectTrigger className="w-auto sm:w-[100px] bg-transparent border-none cursor-pointer focus:ring-0 text-xs sm:text-sm">
                 <SelectValue placeholder="Effort" />
               </SelectTrigger>
               <SelectContent className="bg-neutral-800 border-neutral-700 text-neutral-300 cursor-pointer">
-                <SelectItem value="low" className="hover:bg-neutral-700 focus:bg-neutral-700 cursor-pointer text-xs sm:text-sm">Low</SelectItem>
-                <SelectItem value="medium" className="hover:bg-neutral-700 focus:bg-neutral-700 cursor-pointer text-xs sm:text-sm">Medium</SelectItem>
-                <SelectItem value="high" className="hover:bg-neutral-700 focus:bg-neutral-700 cursor-pointer text-xs sm:text-sm">High</SelectItem>
+                <SelectItem
+                  value="low"
+                  className="hover:bg-neutral-700 focus:bg-neutral-700 cursor-pointer text-xs sm:text-sm"
+                >
+                  Low
+                </SelectItem>
+                <SelectItem
+                  value="medium"
+                  className="hover:bg-neutral-700 focus:bg-neutral-700 cursor-pointer text-xs sm:text-sm"
+                >
+                  Medium
+                </SelectItem>
+                <SelectItem
+                  value="high"
+                  className="hover:bg-neutral-700 focus:bg-neutral-700 cursor-pointer text-xs sm:text-sm"
+                >
+                  High
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -242,14 +283,32 @@ export const InputForm: React.FC<InputFormProps> = ({
                 <SelectValue placeholder="Model" />
               </SelectTrigger>
               <SelectContent className="bg-neutral-800 border-neutral-700 text-neutral-300 cursor-pointer">
-                <SelectItem value="gemini-2.0-flash" className="hover:bg-neutral-700 focus:bg-neutral-700 cursor-pointer text-xs sm:text-sm">
-                  <div className="flex items-center"><Zap className="h-3 w-3 sm:h-4 sm:w-4 mr-2 text-yellow-400" />2.0 Flash</div>
+                <SelectItem
+                  value="gemini-2.0-flash"
+                  className="hover:bg-neutral-700 focus:bg-neutral-700 cursor-pointer text-xs sm:text-sm"
+                >
+                  <div className="flex items-center">
+                    <Zap className="h-3 w-3 sm:h-4 sm:w-4 mr-2 text-yellow-400" />
+                    2.0 Flash
+                  </div>
                 </SelectItem>
-                <SelectItem value="gemini-2.5-flash-preview-04-17" className="hover:bg-neutral-700 focus:bg-neutral-700 cursor-pointer text-xs sm:text-sm">
-                  <div className="flex items-center"><Zap className="h-3 w-3 sm:h-4 sm:w-4 mr-2 text-orange-400" />2.5 Flash</div>
+                <SelectItem
+                  value="gemini-2.5-flash-preview-04-17"
+                  className="hover:bg-neutral-700 focus:bg-neutral-700 cursor-pointer text-xs sm:text-sm"
+                >
+                  <div className="flex items-center">
+                    <Zap className="h-3 w-3 sm:h-4 sm:w-4 mr-2 text-orange-400" />
+                    2.5 Flash
+                  </div>
                 </SelectItem>
-                <SelectItem value="gemini-2.5-pro-preview-05-06" className="hover:bg-neutral-700 focus:bg-neutral-700 cursor-pointer text-xs sm:text-sm">
-                  <div className="flex items-center"><Cpu className="h-3 w-3 sm:h-4 sm:w-4 mr-2 text-purple-400" />2.5 Pro</div>
+                <SelectItem
+                  value="gemini-2.5-pro-preview-05-06"
+                  className="hover:bg-neutral-700 focus:bg-neutral-700 cursor-pointer text-xs sm:text-sm"
+                >
+                  <div className="flex items-center">
+                    <Cpu className="h-3 w-3 sm:h-4 sm:w-4 mr-2 text-purple-400" />
+                    2.5 Pro
+                  </div>
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -276,7 +335,7 @@ export const InputForm: React.FC<InputFormProps> = ({
         </div>
         {/* New Search Button */}
         {hasHistory && (
-           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
             <Button
               className="bg-neutral-700 hover:bg-neutral-600 border-neutral-600 text-neutral-300 cursor-pointer rounded-xl px-3 py-1 text-sm h-auto mt-2 sm:mt-0"
               variant="outline"
@@ -293,7 +352,9 @@ export const InputForm: React.FC<InputFormProps> = ({
 
   async function handleGenerateMindMap() {
     if (uploadedFiles.length === 0) {
-      setMindMapError("Please upload at least one file to generate a Mind Map.");
+      setMindMapError(
+        "Please upload at least one file to generate a Mind Map."
+      );
       // setIsMindMapOpen(true); // Optionally open modal to show this initial error
       return;
     }
@@ -303,7 +364,9 @@ export const InputForm: React.FC<InputFormProps> = ({
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!apiKey) {
       console.error("VITE_GEMINI_API_KEY is not set.");
-      setMindMapError("Gemini API key is not configured. Cannot generate Mind Map.");
+      setMindMapError(
+        "Gemini API key is not configured. Cannot generate Mind Map."
+      );
       setIsMindMapOpen(true); // Open modal to show configuration error
       setIsGeneratingMap(false);
       return;
@@ -318,12 +381,19 @@ export const InputForm: React.FC<InputFormProps> = ({
       const fileContents = await extractContentFromFiles(uploadedFiles, 5000);
 
       const formattedFileExcerpts = fileContents
-        .map(fc => `File: ${fc.name}\nContent:\n${fc.text}\n---`)
-        .join('\n\n');
+        .map((fc) => `File: ${fc.name}\nContent:\n${fc.text}\n---`)
+        .join("\n\n");
 
       const formattedChatHistory = chatHistory
-        .map(msg => `${msg.type === 'human' ? 'User' : 'AI'}: ${typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}`)
-        .join('\n');
+        .map(
+          (msg) =>
+            `${msg.type === "human" ? "User" : "AI"}: ${
+              typeof msg.content === "string"
+                ? msg.content
+                : JSON.stringify(msg.content)
+            }`
+        )
+        .join("\n");
 
       const geminiPrompt = `
         Based on the following information, generate a mind map. The mind map should represent the key concepts, relationships, and hierarchies from the provided text.
@@ -344,7 +414,10 @@ export const InputForm: React.FC<InputFormProps> = ({
         ${formattedChatHistory || "No chat history provided."}
 
         **Final AI Answer (if available, this is the primary subject for the mind map):**
-        ${currentAiResponse || "No specific AI answer provided. Focus on file content."}
+        ${
+          currentAiResponse ||
+          "No specific AI answer provided. Focus on file content."
+        }
 
         **Excerpts from Uploaded Files:**
         ${formattedFileExcerpts}
@@ -354,25 +427,33 @@ export const InputForm: React.FC<InputFormProps> = ({
         If the AI answer is present, it should be the primary source for the mind map, with file excerpts providing supplementary details or context. If no AI answer, use the user question and file excerpts.
       `;
 
-      const geminiResponse = await generateMindMapWithGemini(apiKey, geminiPrompt);
+      const geminiResponse = await generateMindMapWithGemini(
+        apiKey,
+        geminiPrompt
+      );
 
       if (geminiResponse && geminiResponse.nodes && geminiResponse.edges) {
-        const reactFlowNodes: Node[] = geminiResponse.nodes.map(node => ({
+        const reactFlowNodes: Node[] = geminiResponse.nodes.map((node) => ({
           id: node.id,
           data: { label: node.label },
           position: { x: 0, y: 0 }, // Dagre will set this
           // type: node.parent === null ? 'input' : 'default', // Optional: style root nodes differently
         }));
 
-        const reactFlowEdges: Edge[] = geminiResponse.edges.map((edge, index) => ({
-          id: `e${index + 1}-${edge.source}-${edge.target}`,
-          source: edge.source,
-          target: edge.target,
-          animated: true, // Optional: make edges animated
-          type: 'smoothstep', // Optional: use smoothstep edges
-        }));
+        const reactFlowEdges: Edge[] = geminiResponse.edges.map(
+          (edge, index) => ({
+            id: `e${index + 1}-${edge.source}-${edge.target}`,
+            source: edge.source,
+            target: edge.target,
+            animated: true, // Optional: make edges animated
+            type: "smoothstep", // Optional: use smoothstep edges
+          })
+        );
 
-        const { layoutedNodes, layoutedEdges } = applyDagreLayout(reactFlowNodes, reactFlowEdges);
+        const { layoutedNodes, layoutedEdges } = applyDagreLayout(
+          reactFlowNodes,
+          reactFlowEdges
+        );
 
         setMindMapNodes(layoutedNodes);
         setMindMapNodes(layoutedNodes);
@@ -380,12 +461,16 @@ export const InputForm: React.FC<InputFormProps> = ({
         // setIsMindMapOpen(true); // Already open
       } else {
         console.error("Failed to generate mind map from Gemini response.");
-        setMindMapError("Could not generate the mind map. The AI's response was not in the expected format or was empty.");
+        setMindMapError(
+          "Could not generate the mind map. The AI's response was not in the expected format or was empty."
+        );
         // Keep modal open to show error by not calling setIsMindMapOpen(false)
       }
     } catch (error) {
       console.error("Error in mind map generation process:", error);
-      setMindMapError("An error occurred while generating the mind map. Please check the console for details.");
+      setMindMapError(
+        "An error occurred while generating the mind map. Please check the console for details."
+      );
       // Keep modal open
     } finally {
       setIsGeneratingMap(false);

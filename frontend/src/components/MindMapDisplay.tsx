@@ -1,10 +1,14 @@
-import React from 'react';
-import ReactFlow, { Node, Edge, Position, Controls, Background, BackgroundVariant } from 'reactflow';
-import { Button } from "@/components/ui/button"; // Assuming you have a Button component
-import { X } from 'lucide-react';
-
-import { motion, AnimatePresence } from 'framer-motion'; // Import framer-motion
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import React from "react";
+import ReactFlow, {
+  Node,
+  Edge,
+  Controls,
+  Background,
+  BackgroundVariant,
+} from "reactflow";
+import { Button } from "@/components/ui/button";
+import { X, AlertTriangle, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface MindMapDisplayProps {
   // isOpen prop is no longer needed here if AnimatePresence handles conditional rendering in App.tsx
@@ -42,12 +46,11 @@ const reactFlowStyles = `
 `;
 
 const MindMapDisplay: React.FC<MindMapDisplayProps> = ({
-  isOpen,
   onClose,
   nodes,
   edges,
   mindMapError,
-  isGenerating
+  isGenerating,
 }) => {
   // Removed if (!isOpen) check, AnimatePresence in App.tsx will handle this.
 
@@ -61,9 +64,16 @@ const MindMapDisplay: React.FC<MindMapDisplayProps> = ({
     content = (
       <div className="flex flex-col items-center justify-center h-full text-center p-6">
         <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
-        <h3 className="text-lg font-semibold text-neutral-200 mb-2">Mind Map Generation Failed</h3>
-        <p className="text-sm text-neutral-400 whitespace-pre-wrap">{mindMapError}</p>
-        <Button onClick={handleInternalClose} className="mt-6 bg-red-600 hover:bg-red-700 text-white">
+        <h3 className="text-lg font-semibold text-neutral-200 mb-2">
+          Mind Map Generation Failed
+        </h3>
+        <p className="text-sm text-neutral-400 whitespace-pre-wrap">
+          {mindMapError}
+        </p>
+        <Button
+          onClick={handleInternalClose}
+          className="mt-6 bg-red-600 hover:bg-red-700 text-white"
+        >
           Close
         </Button>
       </div>
@@ -90,20 +100,25 @@ const MindMapDisplay: React.FC<MindMapDisplayProps> = ({
           className="[&>button]:bg-neutral-700 [&>button]:border-neutral-600 [&>button_svg]:fill-neutral-300 hover:[&>button]:bg-neutral-600"
           position="bottom-right"
         />
-        <Background variant={BackgroundVariant.Dots} gap={18} size={0.7} color="#52525b" /> {/* neutral-600 */}
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={18}
+          size={0.7}
+          color="#52525b"
+        />{" "}
+        {/* neutral-600 */}
       </ReactFlow>
     );
   } else {
-     content = (
+    content = (
       <div className="flex flex-col items-center justify-center h-full text-center p-6">
         <p className="text-sm text-neutral-500">No mind map data available.</p>
-         <Button onClick={handleInternalClose} className="mt-6">
+        <Button onClick={handleInternalClose} className="mt-6">
           Close
         </Button>
       </div>
     );
   }
-
 
   return (
     <>
@@ -121,20 +136,25 @@ const MindMapDisplay: React.FC<MindMapDisplayProps> = ({
           className="bg-neutral-800 rounded-xl shadow-2xl w-11/12 max-w-5xl h-[85vh] flex flex-col p-1 border border-neutral-700/70"
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.90, opacity: 0 }}
+          exit={{ scale: 0.9, opacity: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
         >
           <div className="flex items-center justify-between p-3.5 border-b border-neutral-700/70">
             <h2 className="text-md font-semibold text-neutral-100">Mind Map</h2>
-            <Button variant="ghost" size="icon" onClick={handleInternalClose} className="text-neutral-500 hover:text-neutral-100 transition-colors">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleInternalClose}
+              className="text-neutral-500 hover:text-neutral-100 transition-colors"
+            >
               <X className="h-5 w-5" />
             </Button>
           </div>
           <div className="flex-grow bg-neutral-850 rounded-b-lg overflow-hidden relative">
             {content}
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </>
   );
 };

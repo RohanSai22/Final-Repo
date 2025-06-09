@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { useState, ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 // ActivityTimeline and ProcessedEvent removed
-import { ThoughtStreamPanel } from './ThoughtStreamPanel'; // New import
-import { CognitiveBlockData } from '@/types/cognitive'; // New import
+import { ThoughtStreamPanel } from "./ThoughtStreamPanel"; // New import
+import { CognitiveBlockData } from "@/types/cognitive"; // New import
+import { Node, Edge } from "reactflow"; // Import Node and Edge types
+import MindMapSidePanel from "./MindMapSidePanel"; // Import MindMapSidePanel
 
 // Markdown component props type from former ReportView
 type MdComponentProps = {
@@ -139,17 +140,17 @@ interface HumanMessageBubbleProps {
 }
 
 // HumanMessageBubble Component
-const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = ({
-  message,
-}) => {
+const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = ({ message }) => {
   return (
     <div
       className={`text-white rounded-3xl break-words min-h-7 bg-neutral-700 max-w-[100%] sm:max-w-[90%] px-4 pt-3 rounded-br-lg`}
     >
-      <ReactMarkdown components={globalMdComponents}> {/* Uses global/default components */}
-        {typeof message.content === "string"
-          ? message.content
-          : JSON.stringify(message.content)}
+      <ReactMarkdown components={globalMdComponents}>
+        {(() => {
+          if (!message.content) return "";
+          if (typeof message.content === "string") return message.content;
+          return JSON.stringify(message.content);
+        })()}
       </ReactMarkdown>
     </div>
   );
@@ -198,12 +199,18 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
       if (!href) return <>{children}</>;
 
       const number = getCitationNumberForUrl(href);
-      const originalLinkText = children ? (Array.isArray(children) ? children.join('') : String(children)) : href;
-
+      const originalLinkText = children
+        ? Array.isArray(children)
+          ? children.join("")
+          : String(children)
+        : href;
 
       return (
         <a
-          className={cn("text-blue-400 hover:text-blue-300 font-medium text-xs align-super", className)}
+          className={cn(
+            "text-blue-400 hover:text-blue-300 font-medium text-xs align-super",
+            className
+          )}
           href={href}
           target="_blank"
           rel="noopener noreferrer"
@@ -214,14 +221,22 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
         </a>
       );
     },
-    img: ({ node, className, children, ...props }: MdComponentProps & { src?: string; alt?: string }) => {
+    img: ({
+      node,
+      className,
+      children,
+      ...props
+    }: MdComponentProps & { src?: string; alt?: string }) => {
       // Apply styling for responsive images that fit well within the chat bubble
       return (
         <img
           {...props}
           src={props.src}
           alt={props.alt || "image from AI"} // Provide a default alt text
-          className={cn("max-w-full h-auto rounded-lg my-2 shadow-md", className)}
+          className={cn(
+            "max-w-full h-auto rounded-lg my-2 shadow-md",
+            className
+          )}
         />
       );
     },
@@ -230,17 +245,24 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
   return (
     <div className={`relative break-words flex flex-col w-full`}>
       <ReactMarkdown components={bubbleMdComponents}>
-        {typeof message.content === "string"
+        {message.content && typeof message.content === "string"
           ? message.content
-          : JSON.stringify(message.content)}
+          : message.content
+          ? JSON.stringify(message.content)
+          : ""}
       </ReactMarkdown>
 
       {messageCitationLinks.length > 0 && (
         <div className="mt-4 pt-3 border-t border-neutral-700/80">
-          <h4 className="text-xs font-semibold mb-1.5 text-neutral-400">Sources:</h4>
+          <h4 className="text-xs font-semibold mb-1.5 text-neutral-400">
+            Sources:
+          </h4>
           <ol className="list-decimal list-inside text-xs space-y-1">
             {messageCitationLinks.map((link, index) => (
-              <li key={index} className="text-neutral-400 truncate leading-relaxed">
+              <li
+                key={index}
+                className="text-neutral-400 truncate leading-relaxed"
+              >
                 <a
                   href={link}
                   target="_blank"
@@ -270,9 +292,11 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
         className="cursor-pointer bg-neutral-700 hover:bg-neutral-600 border-neutral-600 text-neutral-300 self-end mt-3 px-2.5 py-1 h-auto text-xs"
         onClick={() =>
           handleCopy(
-            typeof message.content === "string"
+            message.content && typeof message.content === "string"
               ? message.content
-              : JSON.stringify(message.content),
+              : message.content
+              ? JSON.stringify(message.content)
+              : "",
             message.id!
           )
         }
@@ -299,6 +323,8 @@ interface ChatMessagesViewProps {
   setIsMindMapOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setMindMapNodes: React.Dispatch<React.SetStateAction<Node[]>>;
   setMindMapEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
+  mindMapNodes: Node[];
+  mindMapEdges: Edge[];
   // Context for Mind Map
   chatHistory: Message[];
   currentAiResponse: string;
@@ -322,6 +348,8 @@ export function ChatMessagesView({
   setIsMindMapOpen,
   setMindMapNodes,
   setMindMapEdges,
+  mindMapNodes,
+  mindMapEdges,
   // Context for Mind Map
   chatHistory,
   currentAiResponse,
@@ -344,56 +372,79 @@ export function ChatMessagesView({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto" ref={scrollAreaRef}>
-        <div className="p-4 md:p-6 space-y-2 max-w-4xl mx-auto pt-16">
-          {messages.map((message, index) => {
-            const isLast = index === messages.length - 1;
-            return (
-              <div key={message.id || `msg-${index}`} className="space-y-3">
-                <div
-                  className={`flex items-start gap-3 ${
-                    message.type === "human" ? "justify-end" : ""
-                  }`}
-                >
-                  {message.type === "human" ? (
-                    <HumanMessageBubble
-                      message={message}
-                      // mdComponents prop removed from HumanMessageBubble call
-                    />
-                  ) : (
-                    <AiMessageBubble
-                      message={message}
-                      isLastMessage={isLast}
-                      isOverallLoading={isLoading}
-                      // mdComponents prop removed from AiMessageBubble call
-                      handleCopy={handleCopy}
-                      copiedMessageId={copiedMessageId}
-                      cognitiveStream={cognitiveStream}
-                      isAiThinkingStep={isAiThinkingStep}
-                    />
-                  )}
+      <div className="flex-1 overflow-hidden flex">
+        {/* Main Chat Area */}
+        <div className="flex-1 overflow-y-auto" ref={scrollAreaRef}>
+          <div className="p-4 md:p-6 space-y-2 max-w-4xl mx-auto pt-16">
+            {messages.map((message, index) => {
+              const isLast = index === messages.length - 1;
+              return (
+                <div key={message.id || `msg-${index}`} className="space-y-3">
+                  <div
+                    className={`flex items-start gap-3 ${
+                      message.type === "human" ? "justify-end" : ""
+                    }`}
+                  >
+                    {message.type === "human" ? (
+                      <HumanMessageBubble
+                        message={message}
+                        // mdComponents prop removed from HumanMessageBubble call
+                      />
+                    ) : (
+                      <AiMessageBubble
+                        message={message}
+                        isLastMessage={isLast}
+                        isOverallLoading={isLoading}
+                        // mdComponents prop removed from AiMessageBubble call
+                        handleCopy={handleCopy}
+                        copiedMessageId={copiedMessageId}
+                        cognitiveStream={cognitiveStream}
+                        isAiThinkingStep={isAiThinkingStep}
+                      />
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-          {/* General loading indicator for when AI is processing but no message bubble is ready for ThoughtStreamPanel yet */}
-          {isLoading && messages.length > 0 && messages[messages.length -1].type === 'human' && !cognitiveStream?.length && (
-             <div className="flex items-start gap-3 mt-3">
-                <div className="relative group max-w-[85%] md:max-w-[80%] rounded-xl p-3 shadow-sm break-words bg-neutral-800 text-neutral-100 rounded-bl-none w-full min-h-[56px]">
+              );
+            })}
+            {/* General loading indicator for when AI is processing but no message bubble is ready for ThoughtStreamPanel yet */}
+            {isLoading &&
+              messages.length > 0 &&
+              messages[messages.length - 1].type === "human" &&
+              !cognitiveStream?.length && (
+                <div className="flex items-start gap-3 mt-3">
+                  <div className="relative group max-w-[85%] md:max-w-[80%] rounded-xl p-3 shadow-sm break-words bg-neutral-800 text-neutral-100 rounded-bl-none w-full min-h-[56px]">
                     <div className="flex items-center justify-start h-full">
-                        <Loader2 className="h-5 w-5 animate-spin text-neutral-400 mr-2" />
-                        <span>Processing...</span>
+                      <Loader2 className="h-5 w-5 animate-spin text-neutral-400 mr-2" />
+                      <span>Processing...</span>
                     </div>
+                  </div>
                 </div>
-            </div>
-          )}
-           {/* Fallback for empty chat, if needed, though WelcomeScreen handles initial empty state */}
-           {isLoading && messages.length === 0 && (
-             <div className="flex items-center justify-center h-full">
+              )}
+            {/* Fallback for empty chat, if needed, though WelcomeScreen handles initial empty state */}
+            {isLoading && messages.length === 0 && (
+              <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
-             </div>
-           )}
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Mind Map Side Panel */}
+        {mindMapNodes.length > 0 && (
+          <div className="w-96 border-l border-neutral-700 bg-neutral-800/50">
+            <MindMapSidePanel
+              onClose={() => {
+                setMindMapNodes([]);
+                setMindMapEdges([]);
+                setMindMapError(null);
+              }}
+              nodes={mindMapNodes}
+              edges={mindMapEdges}
+              mindMapError={mindMapError}
+              isGenerating={mindMapNodes.length === 0 && !mindMapError}
+            />
+          </div>
+        )}
       </div>
       <div className="bg-neutral-800 border-t border-neutral-700">
         <InputForm

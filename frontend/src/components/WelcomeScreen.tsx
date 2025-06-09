@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -8,9 +8,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Send, StopCircle, Brain, Cpu, Zap } from "lucide-react";
-import { TextGenerateEffect } from "./ui/text-generate-effect";
-import { motion } from 'framer-motion'; // Import motion
+import {
+  Send,
+  StopCircle,
+  Brain,
+  Cpu,
+  Zap,
+  Upload,
+  XCircle,
+  FileText,
+  CheckCircle,
+} from "lucide-react";
+import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
+import { motion } from "framer-motion"; // Import motion
 
 interface WelcomeScreenProps {
   handleSubmit: (
@@ -20,23 +30,38 @@ interface WelcomeScreenProps {
   ) => void;
   onCancel: () => void;
   isLoading: boolean;
+  uploadedFiles: File[];
+  setUploadedFiles: React.Dispatch<React.SetStateAction<File[]>>;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   handleSubmit,
   onCancel,
   isLoading,
+  uploadedFiles,
+  setUploadedFiles,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [internalInputValue, setInternalInputValue] = useState("");
   const [effort, setEffort] = useState("medium");
   const [model, setModel] = useState("gemini-2.5-flash-preview-04-17");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleInternalSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!internalInputValue.trim() || isLoading) return;
+    if (!internalInputValue.trim() && uploadedFiles.length === 0) return;
     handleSubmit(internalInputValue, effort, model);
     // setInternalInputValue(""); // Keep input value after submission for now, can be cleared if desired
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      setUploadedFiles(Array.from(event.target.files));
+    }
+  };
+
+  const removeFile = (fileName: string) => {
+    setUploadedFiles(uploadedFiles.filter((file) => file.name !== fileName));
   };
 
   const handleInternalKeyDown = (
@@ -48,7 +73,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     }
   };
 
-  const isSubmitDisabled = !internalInputValue.trim() || isLoading;
+  const isSubmitDisabled =
+    (!internalInputValue.trim() && uploadedFiles.length === 0) || isLoading;
 
   // For TextGenerateEffect initial animation, if needed
   const [runTitleAnimation, setRunTitleAnimation] = useState(false);
@@ -63,7 +89,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       clearTimeout(timer2);
     };
   }, []);
-
 
   return (
     <div className="flex flex-col items-center justify-center text-center px-4 flex-1 w-full max-w-4xl mx-auto gap-4 min-h-screen">
@@ -85,31 +110,39 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
         {/* Main Title with TextGenerateEffect */}
         {runTitleAnimation && (
-            <TextGenerateEffect
-                words="Novah"
-                className={`text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extralight mb-0 tracking-[0.08em] leading-none text-white transition-all duration-300 ${
-                    isFocused ? "drop-shadow-[0_0px_15px_rgba(255,255,255,0.3)]" : "drop-shadow-[0_0px_5px_rgba(255,255,255,0.1)]"
-                }`}
-            />
+          <TextGenerateEffect
+            words="Novah"
+            className={`text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extralight mb-0 tracking-[0.08em] leading-none text-white transition-all duration-300 ${
+              isFocused
+                ? "drop-shadow-[0_0px_15px_rgba(255,255,255,0.3)]"
+                : "drop-shadow-[0_0px_5px_rgba(255,255,255,0.1)]"
+            }`}
+          />
         )}
-         {!runTitleAnimation && ( // Fallback if animation doesn't run
-            <h1 className={`text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extralight mb-0 tracking-[0.08em] leading-none text-white transition-all duration-300 ${
-                isFocused ? "drop-shadow-[0_0px_15px_rgba(255,255,255,0.3)]" : "drop-shadow-[0_0px_5px_rgba(255,255,255,0.1)]"
-            }`}>Novah</h1>
+        {!runTitleAnimation && ( // Fallback if animation doesn't run
+          <h1
+            className={`text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extralight mb-0 tracking-[0.08em] leading-none text-white transition-all duration-300 ${
+              isFocused
+                ? "drop-shadow-[0_0px_15px_rgba(255,255,255,0.3)]"
+                : "drop-shadow-[0_0px_5px_rgba(255,255,255,0.1)]"
+            }`}
+          >
+            Novah
+          </h1>
         )}
       </div>
 
       {/* Subtitle Section */}
-      <div className="mb-10 h-8"> {/* Added h-8 to reserve space and prevent layout shift */}
+      <div className="mb-10 h-8">
+        {" "}
+        {/* Added h-8 to reserve space and prevent layout shift */}
         {runSubtitleAnimation && (
-            <TextGenerateEffect
-                words="Your Advanced AI Agent"
-                duration={0.3}
-                className="text-lg md:text-xl text-zinc-400 tracking-wider font-light"
-            />
+          <TextGenerateEffect
+            words="Your Advanced AI Agent"
+            className="text-lg md:text-xl text-zinc-400 tracking-wider font-light"
+          />
         )}
       </div>
-
 
       {/* Input Area Section */}
       <div className="relative w-full max-w-3xl mx-auto group mb-3">
@@ -174,20 +207,134 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         Press Enter to send. Shift+Enter for new line.
       </p>
 
+      {/* File Upload Section */}
+      <div className="w-full max-w-3xl mx-auto mb-8">
+        <div className="flex flex-col gap-4">
+          {/* File Upload Button */}
+          <div className="flex items-center justify-center gap-3">
+            <input
+              type="file"
+              multiple
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept=".pdf,.txt,.doc,.docx"
+            />
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="bg-zinc-700 hover:bg-zinc-600 border-zinc-600 text-zinc-300 hover:text-zinc-200 text-sm px-4 py-2"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Files
+              </Button>
+            </motion.div>
+            {uploadedFiles.length > 0 && (
+              <motion.div
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-500 hover:text-red-400 text-sm"
+                  onClick={() => setUploadedFiles([])}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Clear All
+                </Button>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Uploaded Files Display */}
+          {uploadedFiles.length > 0 && (
+            <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <h4 className="text-sm font-medium text-zinc-300">
+                  {uploadedFiles.length} file
+                  {uploadedFiles.length !== 1 ? "s" : ""} uploaded
+                </h4>
+              </div>
+              <div className="space-y-2">
+                {uploadedFiles.map((file, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between bg-zinc-700/30 rounded-md p-2 border border-zinc-600/30"
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <FileText className="h-4 w-4 text-zinc-400 flex-shrink-0" />
+                      <span className="text-xs text-zinc-300 truncate">
+                        {file.name}
+                      </span>
+                      <span className="text-xs text-zinc-500 flex-shrink-0">
+                        ({(file.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                    <motion.div
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                        onClick={() => removeFile(file.name)}
+                      >
+                        <XCircle className="h-3 w-3" />
+                      </Button>
+                    </motion.div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-zinc-500 mt-3 text-center">
+                Upload files first, then ask questions to get contextual answers
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Effort and Model Selectors */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-xl mx-auto mb-8">
         {/* Effort Select */}
         <div className="flex flex-row items-center gap-2 bg-zinc-800/70 border border-zinc-700/50 text-zinc-300 rounded-lg p-2 w-full sm:w-auto">
           <Brain className="h-5 w-5 text-purple-400" />
-          <label htmlFor="effort-select" className="text-sm font-medium">Effort:</label>
+          <label htmlFor="effort-select" className="text-sm font-medium">
+            Effort:
+          </label>
           <Select value={effort} onValueChange={setEffort}>
-            <SelectTrigger id="effort-select" className="w-full sm:w-[130px] bg-transparent border-none focus:ring-0 text-zinc-300 placeholder:text-zinc-500">
+            <SelectTrigger
+              id="effort-select"
+              className="w-full sm:w-[130px] bg-transparent border-none focus:ring-0 text-zinc-300 placeholder:text-zinc-500"
+            >
               <SelectValue placeholder="Effort" />
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 border-zinc-700 text-zinc-300">
-              <SelectItem value="low" className="cursor-pointer hover:bg-zinc-800 focus:bg-zinc-800">Low</SelectItem>
-              <SelectItem value="medium" className="cursor-pointer hover:bg-zinc-800 focus:bg-zinc-800">Medium</SelectItem>
-              <SelectItem value="high" className="cursor-pointer hover:bg-zinc-800 focus:bg-zinc-800">High</SelectItem>
+              <SelectItem
+                value="low"
+                className="cursor-pointer hover:bg-zinc-800 focus:bg-zinc-800"
+              >
+                Low
+              </SelectItem>
+              <SelectItem
+                value="medium"
+                className="cursor-pointer hover:bg-zinc-800 focus:bg-zinc-800"
+              >
+                Medium
+              </SelectItem>
+              <SelectItem
+                value="high"
+                className="cursor-pointer hover:bg-zinc-800 focus:bg-zinc-800"
+              >
+                High
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -195,20 +342,43 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         {/* Model Select */}
         <div className="flex flex-row items-center gap-2 bg-zinc-800/70 border border-zinc-700/50 text-zinc-300 rounded-lg p-2 w-full sm:w-auto">
           <Cpu className="h-5 w-5 text-blue-400" />
-          <label htmlFor="model-select" className="text-sm font-medium">Model:</label>
+          <label htmlFor="model-select" className="text-sm font-medium">
+            Model:
+          </label>
           <Select value={model} onValueChange={setModel}>
-            <SelectTrigger id="model-select" className="w-full sm:w-[220px] bg-transparent border-none focus:ring-0 text-zinc-300 placeholder:text-zinc-500">
+            <SelectTrigger
+              id="model-select"
+              className="w-full sm:w-[220px] bg-transparent border-none focus:ring-0 text-zinc-300 placeholder:text-zinc-500"
+            >
               <SelectValue placeholder="Model" />
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 border-zinc-700 text-zinc-300">
-              <SelectItem value="gemini-2.0-flash" className="cursor-pointer hover:bg-zinc-800 focus:bg-zinc-800">
-                <div className="flex items-center"><Zap className="h-4 w-4 mr-2 text-yellow-400" />2.0 Flash</div>
+              <SelectItem
+                value="gemini-2.0-flash"
+                className="cursor-pointer hover:bg-zinc-800 focus:bg-zinc-800"
+              >
+                <div className="flex items-center">
+                  <Zap className="h-4 w-4 mr-2 text-yellow-400" />
+                  2.0 Flash
+                </div>
               </SelectItem>
-              <SelectItem value="gemini-2.5-flash-preview-04-17" className="cursor-pointer hover:bg-zinc-800 focus:bg-zinc-800">
-                <div className="flex items-center"><Zap className="h-4 w-4 mr-2 text-orange-400" />2.5 Flash</div>
+              <SelectItem
+                value="gemini-2.5-flash-preview-04-17"
+                className="cursor-pointer hover:bg-zinc-800 focus:bg-zinc-800"
+              >
+                <div className="flex items-center">
+                  <Zap className="h-4 w-4 mr-2 text-orange-400" />
+                  2.5 Flash
+                </div>
               </SelectItem>
-              <SelectItem value="gemini-2.5-pro-preview-05-06" className="cursor-pointer hover:bg-zinc-800 focus:bg-zinc-800">
-                <div className="flex items-center"><Cpu className="h-4 w-4 mr-2 text-purple-400" />2.5 Pro</div>
+              <SelectItem
+                value="gemini-2.5-pro-preview-05-06"
+                className="cursor-pointer hover:bg-zinc-800 focus:bg-zinc-800"
+              >
+                <div className="flex items-center">
+                  <Cpu className="h-4 w-4 mr-2 text-purple-400" />
+                  2.5 Pro
+                </div>
               </SelectItem>
             </SelectContent>
           </Select>
