@@ -1,19 +1,47 @@
 import { useStream } from "@langchain/langgraph-sdk/react";
 import type { Message } from "@langchain/langgraph-sdk";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ProcessedEvent } from "@/components/ActivityTimeline";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { ChatMessagesView } from "@/components/ChatMessagesView";
+import { CognitiveBlockData } from "@/types/cognitive";
+import MindMapDisplay from "@/components/MindMapDisplay";
+import { Node, Edge } from 'reactflow';
+import { AnimatePresence } from 'framer-motion'; // New import for AnimatePresence
 
 export default function App() {
-  const [processedEventsTimeline, setProcessedEventsTimeline] = useState<
-    ProcessedEvent[]
-  >([]);
-  const [historicalActivities, setHistoricalActivities] = useState<
-    Record<string, ProcessedEvent[]>
-  >({});
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [cognitiveStream, setCognitiveStream] = useState<CognitiveBlockData[]>([]);
+  const [isAiThinkingStep, setIsAiThinkingStep] = useState<boolean>(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const hasFinalizeEventOccurredRef = useRef(false);
+
+  // Mind Map State
+  const [isMindMapOpen, setIsMindMapOpen] = useState(false);
+  const [mindMapNodes, setMindMapNodes] = useState<Node[]>([]);
+  const [mindMapEdges, setMindMapEdges] = useState<Edge[]>([]);
+  const [mindMapError, setMindMapError] = useState<string | null>(null); // New state for mind map error
+
+  // Derive chat history and current messages for Mind Map context
+  const chatHistory = thread.messages || [];
+  let currentAiResponse = "";
+  let currentUserQuestion = "";
+
+  if (chatHistory.length > 0) {
+    const lastMessage = chatHistory[chatHistory.length - 1];
+    if (lastMessage.type === 'ai') {
+      currentAiResponse = typeof lastMessage.content === 'string' ? lastMessage.content : JSON.stringify(lastMessage.content);
+      if (chatHistory.length > 1) {
+        const secondLastMessage = chatHistory[chatHistory.length - 2];
+        if (secondLastMessage.type === 'human') {
+          currentUserQuestion = typeof secondLastMessage.content === 'string' ? secondLastMessage.content : JSON.stringify(secondLastMessage.content);
+        }
+      }
+    } else if (lastMessage.type === 'human') {
+      currentUserQuestion = typeof lastMessage.content === 'string' ? lastMessage.content : JSON.stringify(lastMessage.content);
+      // No current AI response yet in this case, or it's from a much earlier turn.
+      // For mind map, we might only care if there *is* an AI response to map.
+    }
+  }
 
   const thread = useStream<{
     messages: Message[];
@@ -26,87 +54,91 @@ export default function App() {
       : "http://localhost:8123",
     assistantId: "agent",
     messagesKey: "messages",
-    onFinish: (event: any) => {
-      console.log(event);
+    onFinish: (/* event: any */) => { // event can be used if needed
+      // console.log("Stream finished:", event);
+      setIsAiThinkingStep(false);
+      hasFinalizeEventOccurredRef.current = false; // Reset for next interaction if still used
     },
     onUpdateEvent: (event: any) => {
-      let processedEvent: ProcessedEvent | null = null;
+      setIsAiThinkingStep(true);
+      let newBlock: CognitiveBlockData | null = null;
+      const blockId = Date.now().toString() + Math.random().toString(36).substring(2,9);
+
       if (event.generate_query) {
-        processedEvent = {
-          title: "Generating Search Queries",
-          data: event.generate_query.query_list.join(", "),
+        newBlock = {
+          id: blockId,
+          type: 'search_queries',
+          content: {
+            title: 'Generating Search Queries',
+            text: `Formulating ${event.generate_query.query_list.length} search query/queries.`,
+            details: event.generate_query.query_list,
+          },
+          timestamp: new Date().toISOString(),
         };
       } else if (event.web_research) {
         const sources = event.web_research.sources_gathered || [];
         const numSources = sources.length;
-        const uniqueLabels = [
-          ...new Set(sources.map((s: any) => s.label).filter(Boolean)),
-        ];
+        const uniqueLabels = [...new Set(sources.map((s: any) => s.label).filter(Boolean))];
         const exampleLabels = uniqueLabels.slice(0, 3).join(", ");
-        processedEvent = {
-          title: "Web Research",
-          data: `Gathered ${numSources} sources. Related to: ${
-            exampleLabels || "N/A"
-          }.`,
+        newBlock = {
+          id: blockId,
+          type: 'web_research',
+          content: {
+            title: 'Web Research',
+            text: `Gathered ${numSources} sources. Related to: ${exampleLabels || 'N/A'}.`,
+            details: sources.map((s:any) => ({url: s.url, title: s.title})), // Example detail structure
+          },
+          timestamp: new Date().toISOString(),
         };
       } else if (event.reflection) {
-        processedEvent = {
-          title: "Reflection",
-          data: event.reflection.is_sufficient
-            ? "Search successful, generating final answer."
-            : `Need more information, searching for ${event.reflection.follow_up_queries.join(
-                ", "
-              )}`,
+        newBlock = {
+          id: blockId,
+          type: 'reflection',
+          content: {
+            title: 'Reflection',
+            text: event.reflection.is_sufficient
+              ? "Information gathered seems sufficient."
+              : `Further information required. Next step: ${event.reflection.follow_up_queries.join(", ")}`,
+            details: event.reflection,
+          },
+          timestamp: new Date().toISOString(),
         };
       } else if (event.finalize_answer) {
-        processedEvent = {
-          title: "Finalizing Answer",
-          data: "Composing and presenting the final answer.",
+        newBlock = {
+          id: blockId,
+          type: 'finalizing_answer',
+          content: {
+            title: 'Finalizing Answer',
+            text: 'Synthesizing information and composing the final answer.',
+          },
+          timestamp: new Date().toISOString(),
         };
-        hasFinalizeEventOccurredRef.current = true;
+        // hasFinalizeEventOccurredRef.current = true; // This ref might be less relevant now
       }
-      if (processedEvent) {
-        setProcessedEventsTimeline((prevEvents) => [
-          ...prevEvents,
-          processedEvent!,
-        ]);
+      // Add other event types like 'action', 'hypothesis', 'code_execution' as they become available from backend
+
+      if (newBlock) {
+        setCognitiveStream((prevStream) => [...prevStream, newBlock!]);
       }
     },
   });
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-      const scrollViewport = scrollAreaRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]"
-      );
-      if (scrollViewport) {
-        scrollViewport.scrollTop = scrollViewport.scrollHeight;
-      }
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  }, [thread.messages]);
+  }, [thread.messages, cognitiveStream]); // Scroll on cognitive stream updates too
 
-  useEffect(() => {
-    if (
-      hasFinalizeEventOccurredRef.current &&
-      !thread.isLoading &&
-      thread.messages.length > 0
-    ) {
-      const lastMessage = thread.messages[thread.messages.length - 1];
-      if (lastMessage && lastMessage.type === "ai" && lastMessage.id) {
-        setHistoricalActivities((prev) => ({
-          ...prev,
-          [lastMessage.id!]: [...processedEventsTimeline],
-        }));
-      }
-      hasFinalizeEventOccurredRef.current = false;
-    }
-  }, [thread.messages, thread.isLoading, processedEventsTimeline]);
+  // useEffect for hasFinalizeEventOccurredRef removed as historicalActivities are removed.
+  // If hasFinalizeEventOccurredRef is used for other purposes, its logic might need review.
 
   const handleSubmit = useCallback(
     (submittedInputValue: string, effort: string, model: string) => {
-      if (!submittedInputValue.trim()) return;
-      setProcessedEventsTimeline([]);
-      hasFinalizeEventOccurredRef.current = false;
+      if (!submittedInputValue.trim() && uploadedFiles.length === 0) return; // Check uploadedFiles too
+      setCognitiveStream([]); // Clear cognitive stream for new query
+      setUploadedFiles([]);
+      setIsAiThinkingStep(true); // Start thinking on submission
+      // hasFinalizeEventOccurredRef.current = false; // Reset if still used elsewhere
 
       // convert effort to, initial_search_query_count and max_research_loops
       // low means max 1 loop and 1 query
@@ -173,12 +205,39 @@ export default function App() {
               scrollAreaRef={scrollAreaRef}
               onSubmit={handleSubmit}
               onCancel={handleCancel}
-              liveActivityEvents={processedEventsTimeline}
-              historicalActivities={historicalActivities}
+              uploadedFiles={uploadedFiles}
+              setUploadedFiles={setUploadedFiles}
+              cognitiveStream={cognitiveStream}
+              isAiThinkingStep={isAiThinkingStep}
+              // Mind Map props
+              setIsMindMapOpen={setIsMindMapOpen}
+              setMindMapNodes={setMindMapNodes}
+              setMindMapEdges={setMindMapEdges}
+              // Context for Mind Map generation
+              chatHistory={chatHistory}
+              currentAiResponse={currentAiResponse}
+              currentUserQuestion={currentUserQuestion}
+              // Mind Map Error handling
+              mindMapError={mindMapError}
+              setMindMapError={setMindMapError}
             />
           )}
         </div>
       </main>
+      <AnimatePresence>
+        {isMindMapOpen && (
+          <MindMapDisplay
+            onClose={() => {
+              setIsMindMapOpen(false);
+              setMindMapError(null); // Clear error when closing modal
+            }}
+            nodes={mindMapNodes}
+            edges={mindMapEdges}
+            mindMapError={mindMapError}
+            isGenerating={mindMapNodes.length === 0 && !mindMapError && isMindMapOpen} // Infer isGenerating for display
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
